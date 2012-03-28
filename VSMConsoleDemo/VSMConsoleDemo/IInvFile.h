@@ -86,8 +86,11 @@ private:
 	void ReadTRECID(char* f);
 
 	// Retrieval
+	int runID;
+	FILE * outputFile;
+
 	RetRec * result;					// Retrieval result set pointer
-	void PrintTop(RetRec * r, int N);			// Print the top N retrieved documents
+	void PrintTop(int queryID, RetRec * r, int N);			// Print the top N retrieved documents
 	void CombineResult(RetRec * r, post * p, float idf);	// Combine the partial retrieval results
 	stemmer Stemming;					// Stemmer
 	char * GotoNextWord(char * s);				// Delimit the next query term

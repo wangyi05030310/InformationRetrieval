@@ -15,6 +15,8 @@ IInvFile::IInvFile() {
 	MaxDocid = 0;
 	Files = NULL;
 	result = NULL;
+	runID = 0;
+	outputFile = NULL;
 }
 
 IInvFile::~IInvFile() {
@@ -80,6 +82,7 @@ void IInvFile::Clear() {
 
 	MaxDocid = -1;
 	free(Files);
+	Files = NULL;
 }
 
 // Count the number of postings as the document frequency
@@ -401,7 +404,7 @@ int compare(const void * aa, const void * bb) {
 }
 
 // Print top N results
-void IInvFile::PrintTop(RetRec * r, int top) {
+void IInvFile::PrintTop(int queryID, RetRec * r, int top) {
 	int i = MaxDocid + 1;
 	qsort(r, MaxDocid + 1, sizeof(RetRec), compare); // qsort is a C function: sort results
 	i = 0;
@@ -409,11 +412,11 @@ void IInvFile::PrintTop(RetRec * r, int top) {
 
 	while (i < top)
 	{
-		if ((r[i].docid == 0) && (r[i].sim == 0.0))
+		if (((r[i].docid == -1) && (r[i].sim == 0)) || !(i < MaxDocid + 1))
 		{
 			return; // no more results; so exit
 		}
-		printf("[%d]\t%s\t%e\r\n",i+1, Files[r[i].docid].TRECID, r[i].sim);
+		fprintf(outputFile, "%d\tQ0\t%s\t%d\t%e\tHKPU-%d\r\n",queryID, Files[r[i].docid].TRECID, i + 1, r[i].sim, runID);
 		i++;
 	}
 }
@@ -421,6 +424,7 @@ void IInvFile::PrintTop(RetRec * r, int top) {
 // Perform retrieval
 void IInvFile::Search(char * q)
 {
+	int i = -1;
 	char * s = q;
 	char * w;
 	bool next = true;
@@ -428,12 +432,33 @@ void IInvFile::Search(char * q)
 
 	float qsize = 0.0;	//query size
 
+	int queryID = -1;
+
 	// Initialize the result set
 	if (result != NULL)
 	{
 		free(result);
 	}
 	result = (RetRec *) calloc(MaxDocid+1, sizeof(RetRec));
+
+	for (int i = 0;i < MaxDocid + 1; ++i)
+	{
+		result[i].docid = -1;
+		result[i].sim = 0;
+	}
+
+	char line[5000] = "\0";
+
+	for (i = 0;q[i] != ' ';++i)
+	{
+		line[i] = q[i];
+	}
+
+	queryID = atoi(line);
+
+	strcpy(line,&(q[i + 1]));
+
+	s = line;
 
 	do {
 		w = s;					// Do searching
@@ -464,7 +489,7 @@ void IInvFile::Search(char * q)
 
 	normalize(result, qsize);
 
-	PrintTop(result, 10);				// Print top 10 retrieved results
+	PrintTop(queryID, result, 1000);				// Print top 10 retrieved results
 }
 
 void IInvFile::normalize(RetRec* r, float qsize)
@@ -472,7 +497,7 @@ void IInvFile::normalize(RetRec* r, float qsize)
 	float qlen = sqrt(qsize);
 	int docid;
 
-	for (int i = 0;i < MaxDocid; ++i)
+	for (int i = 0;i < MaxDocid + 1; ++i)
 	{
 		docid = r[i].docid;
 		r[i].sim = r[i].sim / Files[docid].len / qlen;
@@ -520,6 +545,8 @@ bool IInvFile::BuildInvFile(char* postfilepath)
 void IInvFile::getRetrieval()
 {
 	bool next = true;
+	char line[10000];
+	int queryID = -1;
 	char cmd[10000];
 
 	// Initialize the Hash Table
@@ -532,25 +559,59 @@ void IInvFile::getRetrieval()
 	this->LoadDocRec("InvFile.doc");
 
 	printf("Read TREC File\r\n");
-	this->LoadDocRec("E:\\Material of Exchange Student\\course\\COMP433 Information Retrieval\\All\\1. Assignment\\1.1. Assignment\\1.1.7. FileID-to-DocumentID mapping\\assign\\file.txt");
+	this->ReadTRECID("E:\\Material of Exchange Student\\course\\COMP433 Information Retrieval\\All\\1. Assignment\\1.1. Assignment\\1.1.7. FileID-to-DocumentID mapping\\assign\\file.txt");
 	
-	do {
-		printf("Type the query or \"_quit\" to exit\r\n");
-		gets(cmd);
-		// Start interactive retrieval
+	FILE * queryFile;
+
+	//queryFile = fopen("queryT","rb");
+
+	queryFile = fopen("E:\\Material of Exchange Student\\course\\COMP433 Information Retrieval\\All\\1. Assignment\\1.1. Assignment\\1.1.4. Query files and Judgment File\\queryT","rb");
+
+	if (queryFile == NULL)
+	{
+		printf("Error : query file can not open!\n");
+		return;
+	}
+
+	outputFile = fopen("searchOutput.txt","w");
+
+	while (fgets(cmd, 10000, queryFile) != NULL)
+	{
+		while (10 == cmd[strlen(cmd) - 1] || 13 == cmd[strlen(cmd) - 1])
+		{
+			cmd[strlen(cmd) - 1] = '\0';
+		}
+
 		next = this->Retrieval(cmd);
-	} while (next == true);
+	}
+
+
+	//do {
+	//	//printf("Type the query or \"_quit\" to exit\r\n");
+	//	// Start interactive retrieval
+
+	//	fgets(cmd, 10000, queryFile);
+
+	//	while (10 == cmd[strlen(cmd) - 1] || 13 == cmd[strlen(cmd) - 1])
+	//	{
+	//		cmd[strlen(cmd) - 1] = '\0';
+	//	}
+
+	//	next = this->Retrieval(cmd);
+	//} while (next == true);
+
+	runID++;
 
 	this->Clear();
 }
 
 // Interactive retrieval
 bool IInvFile::Retrieval(char* query) {
-	if (strcmp(query,"_quit") == 0)
+	if (/*strcmp(query,"_quit") == 0*/ query == NULL)
 	{
 		return false;
 	}
-	else 
+	else
 	{
 		Search(query);
 		return true;
@@ -592,10 +653,11 @@ void IInvFile::ReadTRECID(char* f)
 		return;
 	}
 
-	while (fgets(line, 10000, fp) != NULL)
+	for (int i = 0;i < MaxDocid + 1 && fgets(line, 10000, fp) != NULL ; ++i)
 	{
 		sscanf(line,"%d %d %s %s", &docid,&len,str,TRECID);
 		Files[docid].TRECID = strdup(TRECID);
 	}
+
 	fclose(fp);
 }
