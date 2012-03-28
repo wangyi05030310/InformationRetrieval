@@ -82,6 +82,9 @@ private:
 	void SaveDocRec(char * f);	// Save document record information
 	void LoadDocRec(char * f);	// Load document record information
 
+	// TREC File
+	void ReadTRECID(char* f);
+
 	// Retrieval
 	RetRec * result;					// Retrieval result set pointer
 	void PrintTop(RetRec * r, int N);			// Print the top N retrieved documents

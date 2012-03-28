@@ -78,6 +78,8 @@ void IInvFile::Clear() {
 		hsize = 0;
 	}
 
+	MaxDocid = -1;
+	free(Files);
 }
 
 // Count the number of postings as the document frequency
@@ -411,10 +413,9 @@ void IInvFile::PrintTop(RetRec * r, int top) {
 		{
 			return; // no more results; so exit
 		}
-		printf("[%d]\t%d\t%e\r\n",i+1, r[i].docid, r[i].sim);
+		printf("[%d]\t%s\t%e\r\n",i+1, Files[r[i].docid].TRECID, r[i].sim);
 		i++;
 	}
-
 }
 
 // Perform retrieval
@@ -529,6 +530,9 @@ void IInvFile::getRetrieval()
 
 	printf("Load Document Lengths\r\n");
 	this->LoadDocRec("InvFile.doc");
+
+	printf("Read TREC File\r\n");
+	this->LoadDocRec("E:\\Material of Exchange Student\\course\\COMP433 Information Retrieval\\All\\1. Assignment\\1.1. Assignment\\1.1.7. FileID-to-DocumentID mapping\\assign\\file.txt");
 	
 	do {
 		printf("Type the query or \"_quit\" to exit\r\n");
@@ -570,4 +574,28 @@ void IInvFile::CalculateDocLen()
 	this->SaveDocRec("InvFile.doc");
 
 	this->Clear();
+}
+
+void IInvFile::ReadTRECID(char* f)
+{
+	char line[10000];
+	char str[1000];
+	char TRECID[1000];
+
+	int docid = -1;
+	int len = -1;
+
+	FILE * fp = fopen(f,"rb");
+	if (fp == NULL)
+	{
+		printf("Error : no file <%s>", f);
+		return;
+	}
+
+	while (fgets(line, 10000, fp) != NULL)
+	{
+		sscanf(line,"%d %d %s %s", &docid,&len,str,TRECID);
+		Files[docid].TRECID = strdup(TRECID);
+	}
+	fclose(fp);
 }
